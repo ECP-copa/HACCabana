@@ -1,4 +1,5 @@
 #include <fstream>
+#include <random>
 #include "Particles.h"
 
 namespace HACCabana
@@ -14,20 +15,56 @@ Particles::~Particles()
   ;
 }
 
-//void Particles::generateData(int np)
-//{
-//  num_p = np*np*np;
-//  aosoa_host = aosoa_host_type("aosoa_host", num_p);
-//
-//  auto id = Cabana::slice<ParticleID>(aosoa_host, "id");
-//  auto position = Cabana::slice<Position>(aosoa_host, "position");
-//  auto velocity = Cabana::slice<Velocity>(aosoa_host, "velocity");
-//
-//  for (int i=0; i<num_p; ++i)
-//  {
-//    
-//  }
-//}
+void Particles::convert_phys2grid(int ng, float rL, float a)
+{
+  auto velocity = Cabana::slice<Velocity>(aosoa_host, "velocity");
+
+  const float phys2grid_pos = ng/rL;
+  const float phys2grid_vel = phys2grid_pos/100.0;
+  const float scaling = phys2grid_vel*a*a;
+  for (int i=0; i<num_p; ++i)
+  {
+    for (int j=0; j<3; ++j) {
+      velocity(i,j) *= scaling;
+    }
+  }
+}
+
+// 
+void Particles::generateData(const int np, const float delta, const float mean_vel)
+{
+  num_p = np*np*np;
+  aosoa_host = aosoa_host_type("aosoa_host", num_p);
+
+  auto id = Cabana::slice<ParticleID>(aosoa_host, "id");
+  auto position = Cabana::slice<Position>(aosoa_host, "position");
+
+  // generate a uniform random position, in local coordinates
+  for (int i=0; i<num_p; ++i)
+  {
+    id(i) = i;
+    for (int j=0; j<3; ++j) {
+      float r = ((float) rand()) / (float) RAND_MAX;
+      position(i,j) = r * delta;
+    }
+  }
+
+  // generate data from a normal random distribution
+  std::random_device rd{};
+  std::mt19937 gen{rd()};
+  std::normal_distribution<float> d{mean_vel, 2.0};
+  const float vel_1d = mean_vel/sqrt(3.0);
+
+  auto velocity = Cabana::slice<Velocity>(aosoa_host, "velocity");
+
+  for (int i=0; i<num_p; ++i)
+  {
+    for (int j=0; j<3; ++j) {
+      velocity(i,j) = vel_1d * d(gen);
+    }
+  }
+
+}
 
 void Particles::readRawData(std::string file_name) 
 {

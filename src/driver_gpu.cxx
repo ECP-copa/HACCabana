@@ -1,9 +1,15 @@
+#include <ctype.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
 #include <iostream>
 #include <Cabana_Core.hpp>
 #include <Cabana_AoSoA.hpp>
 #include <Cabana_LinkedCellList.hpp>
 
 #include "Definitions.h"
+#include "Parameters.h"
 #include "TimeStepper.h"
 #include "Particles.h"
 #include "ParticleActions.h"
@@ -23,84 +29,137 @@ int main( int argc, char* argv[] )
   // Kokkos::ScopeGuard initializes Kokkos and guarantees it is finalized.
   Kokkos::ScopeGuard scope_guard(argc, argv);
 
-  if (argc != 4)
+  // Program options:
+  // Intput is either synthetic or from a file (optionally the answer is verified)
+
+  int input_flag = 0;           // input file
+  int verification_flag = 0;    // verification file (optional)
+  int synthetic_data_flag = 0;  // generate synthetic data
+  int timestep_flag = 0;        // timstep to advance to (required)
+  int config_flag = 0;          // configuration file (optional)
+  char *input_filename = NULL;
+  char *verification_filename = NULL;
+  char *t_value = NULL;
+  char *configuration_filename = NULL;
+  int c;
+  opterr = 0;
+
+  while ((c = getopt (argc, argv, "i:v:st:c:")) != -1)
+    switch (c)
+    {
+      case 'i':
+        input_flag = 1;
+        input_filename = optarg;
+        break;
+      case 'v':
+        verification_flag = 1;
+        verification_filename = optarg;
+        break;
+      case 's':
+        synthetic_data_flag = 1;
+        break;
+      case 't':
+        timestep_flag = 1;
+        t_value = optarg;
+        break;
+      case 'c':
+        config_flag = 1;
+        configuration_filename = optarg;
+        break;
+      case '?':
+        if (optopt == 'i' || optopt == 'v' || optopt == 't' || optopt == 'c' )
+          fprintf (stderr, "Option -%c requires an argument.\n", optopt);
+        else
+          fprintf (stderr, "Unknown option `-%c'.\n", optopt);
+      default:
+        abort();
+    }
+
+  if (!(input_flag || synthetic_data_flag))
   {
-    cout << "Usage: ./driver_sr <particles before subcycle>.bin <particles after subcycle>.bin step_number" << endl;
-    exit(1);
+    cout << "No input or synthetic flag." << endl;
+    return 1;
+  }
+  if (input_flag && synthetic_data_flag || verification_flag && synthetic_data_flag) 
+  {
+    cout << "Incompatable options!" << endl;
+    return 1;
+  }
+
+  int step0;  
+  if (!timestep_flag)
+  {
+    cout << "Timestep required!" << endl;
+    return 1;
+  }
+  else
+  {
+    step0 = atoi(t_value);
   }
 
   // simulation and cosmology params
-  const int ng = 256;
-  const int np = 256;
-  const int nsteps = 10;
-  const int nsub = 3;
-  const float rmax = 3.116326355;
-  const float rsm = 0.01;
-  const float z_in = 200.0;
-  const float z_fin = 50.0;
-  const float a_in = 1.0 / (1.0+z_in);
-  const float a_fin = 1.0 / (1.0+z_fin);
-  const float hubble = 0.6766;
-  const float deut = 0.02242;
-  const float Tcmb = 2.726; 
-  const float omega_cdm = 0.26067;
-  const float omega_baryon = deut / hubble / hubble;
-  const float omega_nu = 0.0;
-  const float omega_cb = omega_cdm + omega_baryon;
-  const float omega_matter = omega_cb + omega_nu;
-  const float omega_radiation = 2.471e-5*pow(Tcmb/2.725f,4.0f)/pow(hubble,2.0f);
-  const float alpha = 1.0;
-  const float neff_massless = 3.04;
-  const float neff_massive = 0.0;
-  const float f_nu_massless = neff_massless*7.0/8.0*pow(4.0/11.0,4.0/3.0);
-  const float f_nu_massive = neff_massive*7.0/8.0*pow(4.0/11.0,4.0/3.0);
-  const float w_de = -1.0;
-  const float wa_de = 0.0;
-  const float gpscal = static_cast< float >(ng) / static_cast< float >(np);
+  // loads default
+  HACCabana::Parameters Params;
+
+  if (config_flag)
+  {
+    Params.load_from_file(configuration_filename);
+  }
 
   TimeStepper ts(
-     alpha,
-		 a_in,
-		 a_fin,
-		 nsteps,
-		 omega_matter,
-		 omega_cdm,
-		 omega_baryon,
-		 omega_cb,
-		 omega_nu,
-		 omega_radiation,
-		 f_nu_massless,
-		 f_nu_massive,
-		 w_de,
-     wa_de);
+     Params.alpha,
+		 Params.a_in,
+		 Params.a_fin,
+		 Params.nsteps,
+		 Params.omega_matter,
+		 Params.omega_cdm,
+		 Params.omega_baryon,
+		 Params.omega_cb,
+		 Params.omega_nu,
+		 Params.omega_radiation,
+		 Params.f_nu_massless,
+		 Params.f_nu_massive,
+		 Params.w_de,
+     Params.wa_de);
   
-  const int step0 = atoi(argv[3]);  // the full simulation step number we are subcycling
-
   cout << "Advancing timestepper to step " << step0 << endl;
-
-  //get timestepper up to speed
-  for(int step = 0; step < step0; step++)
+  // get timestepper up to speed
+  for (int step = 0; step < step0; step++)
     ts.advanceFullStep();
 
   // we're starting to subcycle after a PM kick
   ts.advanceHalfStep();
 
+  // Setup particle data 
   HACCabana::Particles P;
-  P.readRawData(argv[1]);
-  cout << "Finished reading file: " << argv[1] << endl;
+
+  if (input_flag)
+  {
+    cout << "Reading file: " << input_filename << endl;
+    P.readRawData(input_filename);
+    cout << "Finished reading file: " << input_filename << endl;
+  }
+  else if (synthetic_data_flag)
+  {
+    cout << "Generating synthetic data." << endl;
+    P.generateData(MAX_POS-MIN_POS, MAX_POS-MIN_POS, 10000.0);
+    P.convert_phys2grid(Params.ng, Params.rL, ts.aa());
+  }  
   
+  cout << "Number of particles:" << P.num_p << endl;
+
   HACCabana::ParticleActions PA(&P);
-  PA.subCycle(ts, nsub, gpscal, rmax*rmax, rsm*rsm);
+  PA.subCycle(ts, Params.nsub, Params.gpscal, Params.rmax*Params.rmax, Params.rsm*Params.rsm);
 
   // verify against the answer from the simulation
   // --------------------------------------------------------------------------------------------------------------------------
 
-  if (true)
+  if (verification_flag)
   {
-    cout << "\nVerifying result." << endl;
+    cout << "Verifying result." << endl;
     HACCabana::Particles P_ans;
-    P_ans.readRawData(argv[2]);
-    cout << "Finished reading file: " << argv[2] << endl;
+    P_ans.readRawData(verification_filename);
+    cout << "Finished reading file: " << verification_filename << endl;
 
     auto particle_id = Cabana::slice<HACCabana::Particles::Fields::ParticleID>( P.aosoa_host, "particle_id" );
     auto sort_data = Cabana::sortByKey( particle_id );
