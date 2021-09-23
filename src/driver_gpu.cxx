@@ -141,11 +141,12 @@ int main( int argc, char* argv[] )
   }
   else if (synthetic_data_flag)
   {
-    cout << "Generating synthetic data." << endl;
+    cout << "Generating synthetic data in range (" << MIN_POS << "," << MAX_POS << ") delta " << MAX_POS-MIN_POS << "." << endl;
+    // 
     P.generateData(MAX_POS-MIN_POS, MAX_POS-MIN_POS, 10000.0);
     P.convert_phys2grid(Params.ng, Params.rL, ts.aa());
-  }  
-  
+  }
+
   cout << "Number of particles:" << P.num_p << endl;
 
   HACCabana::ParticleActions PA(&P);

@@ -31,7 +31,7 @@ void Particles::convert_phys2grid(int ng, float rL, float a)
 }
 
 // 
-void Particles::generateData(const int np, const float delta, const float mean_vel)
+void Particles::generateData(const int np, const float rl, const float mean_vel)
 {
   num_p = np*np*np;
   aosoa_host = aosoa_host_type("aosoa_host", num_p);
@@ -39,31 +39,36 @@ void Particles::generateData(const int np, const float delta, const float mean_v
   auto id = Cabana::slice<ParticleID>(aosoa_host, "id");
   auto position = Cabana::slice<Position>(aosoa_host, "position");
 
-  // generate a uniform random position, in local coordinates
+  const float delta = rl/np;
+
+  // generate data from a grid and offset from a normal random distribution
+  std::random_device rd{};
+  std::mt19937 gen{rd()};
+  std::normal_distribution<float> d1{0.0, 0.05}; // mu=0.0 sigma=0.05
+
   for (int i=0; i<num_p; ++i)
   {
     id(i) = i;
-    for (int j=0; j<3; ++j) {
-      float r = ((float) rand()) / (float) RAND_MAX;
-      position(i,j) = r * delta;
-    }
+    position(i,0) = (float)(i % np) * delta + d1(gen);
+    position(i,1) = (float)(i / np % np) * delta + d1(gen);
+    position(i,2) = (float)(i/(np*np)) * delta + d1(gen);
   }
 
-  // generate data from a normal random distribution
-  std::random_device rd{};
-  std::mt19937 gen{rd()};
-  std::normal_distribution<float> d{mean_vel, 2.0};
   const float vel_1d = mean_vel/sqrt(3.0);
 
+  std::normal_distribution<float> d2{0.0, 1.0};
   auto velocity = Cabana::slice<Velocity>(aosoa_host, "velocity");
 
   for (int i=0; i<num_p; ++i)
   {
     for (int j=0; j<3; ++j) {
-      velocity(i,j) = vel_1d * d(gen);
+      velocity(i,j) = vel_1d * d2(gen);
     }
   }
 
+  this->begin = 0;
+  this->end = num_p;
+  reorder();
 }
 
 void Particles::readRawData(std::string file_name) 
@@ -98,8 +103,16 @@ void Particles::readRawData(std::string file_name)
 
   this->begin = 0;
   this->end = num_p;
+  reorder();
+}
 
-  // Relocate particles outside of the boundary to the end of the 
+void Particles::reorder()
+{
+  auto id = Cabana::slice<ParticleID>(aosoa_host, "id");
+  auto position = Cabana::slice<Position>(aosoa_host, "position");
+  auto velocity = Cabana::slice<Velocity>(aosoa_host, "velocity");
+
+  // Relocate any particle outside of the boundary to the end of the 
   // aosoa -- outside particles start at this->end until the end of the aosoa.
   for (int i=this->begin; i<this->end; ++i) {
     if (position(i,0) < MIN_POS || position(i,1) < MIN_POS || position(i,2) < MIN_POS ||

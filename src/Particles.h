@@ -29,9 +29,10 @@ namespace HACCabana
 
       Particles();
       ~Particles();
-      void generateData(const int np, const float delta, const float mean_vel);
+      void generateData(const int np, const float rl, const float mean_vel);
       void convert_phys2grid(int ng, float rL, float a);
       void readRawData(std::string file_name);
+      void reorder();
   };
 
 }

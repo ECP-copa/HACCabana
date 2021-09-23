@@ -1,6 +1,7 @@
 module use /soft/modulefiles
 module load cmake gcc/6.5.0 cuda openmpi
 
+rm -rf build
 mkdir build
 cd build
 

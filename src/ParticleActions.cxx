@@ -85,14 +85,14 @@ void ParticleActions::updateVel(\
     // verifying that the particle is indeed within the cell
     // NOTE: padding the cell boundary since the particle may have moved outside 
     // during a previous subcycle
-    float pad_val = 0.1;
+    float pad_val = 0.5;
     assert( found );
     assert( position(i,0) >= (float)my_bin_pos[0]*CELL_SIZE+MIN_POS-pad_val );
     assert( position(i,1) >= (float)my_bin_pos[1]*CELL_SIZE+MIN_POS-pad_val );
     assert( position(i,2) >= (float)my_bin_pos[2]*CELL_SIZE+MIN_POS-pad_val );
-    assert( position(i,0) < my_bin_pos[0]*CELL_SIZE+CELL_SIZE+MIN_POS+pad_val );
-    assert( position(i,1) < my_bin_pos[1]*CELL_SIZE+CELL_SIZE+MIN_POS+pad_val );
-    assert( position(i,2) < my_bin_pos[2]*CELL_SIZE+CELL_SIZE+MIN_POS+pad_val );
+    assert( position(i,0) <= my_bin_pos[0]*CELL_SIZE+CELL_SIZE+MIN_POS+pad_val );
+    assert( position(i,1) <= my_bin_pos[1]*CELL_SIZE+CELL_SIZE+MIN_POS+pad_val );
+    assert( position(i,2) <= my_bin_pos[2]*CELL_SIZE+CELL_SIZE+MIN_POS+pad_val );
 #endif
     
     float force[3] = {0.0, 0.0, 0.0};
@@ -112,7 +112,7 @@ void ParticleActions::updateVel(\
           size_t binSize = cell_list.binSize(my_bin_pos[0] + ii, my_bin_pos[1] + jj, my_bin_pos[2] + kk);
           for (int j = binOffset; j < binOffset+binSize; ++j) 
           {
-            //if (i != j) // ??? 
+            if (i != j) // ??? 
             {
               const float dx = position(j,0)-position(i,0);
               const float dy = position(j,1)-position(i,1);
