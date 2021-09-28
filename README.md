@@ -13,8 +13,8 @@ make
 ## Run
 Using input and verification files (generated from HACC).
 
-``./build/driver_short-range -i ../PRE_rank0_particle_data.bin -v ../POST_rank0_particle_data.bin -t 0``
+``./build/driver_short-range -i ../PRE_rank0_particle_data.bin -v ../POST_rank0_particle_data.bin -t 0 -c ./256.indat.params``
 
 or use synthetically generated data
 
-``./build/driver_short-range -s -t 0``
+``./build/driver_short-range -s -t 0 -c ./256.indat.params``
