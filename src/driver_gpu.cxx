@@ -143,14 +143,14 @@ int main( int argc, char* argv[] )
   {
     cout << "Generating synthetic data in range (" << MIN_POS << "," << MAX_POS << ") delta " << MAX_POS-MIN_POS << "." << endl;
     // 
-    P.generateData(MAX_POS-MIN_POS, MAX_POS-MIN_POS, 10000.0);
+    P.generateData(MAX_POS-MIN_POS, MAX_POS-MIN_POS, MEAN_VEL);
     P.convert_phys2grid(Params.ng, Params.rL, ts.aa());
   }
 
   cout << "Number of particles:" << P.num_p << endl;
 
   HACCabana::ParticleActions PA(&P);
-  PA.subCycle(ts, Params.nsub, Params.gpscal, Params.rmax*Params.rmax, Params.rsm*Params.rsm);
+  PA.subCycle(ts, Params.nsub, Params.gpscal, Params.rmax*Params.rmax, Params.rsm*Params.rsm, Params.cm_size, MIN_POS, MAX_POS);
 
   // verify against the answer from the simulation
   // --------------------------------------------------------------------------------------------------------------------------

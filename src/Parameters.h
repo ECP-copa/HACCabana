@@ -3,6 +3,7 @@
 
 
 #include <string>
+#include <map>
 #include <Cabana_Core.hpp>
 #include <Cabana_AoSoA.hpp>
 #include "Definitions.h"
@@ -43,11 +44,15 @@ namespace HACCabana
       float w_de;
       float wa_de;
       float gpscal;
+      float cm_size;
 
       Parameters();
       ~Parameters();
 
       void load_from_file(std::string file_name);
+
+    private:
+      std::map<std::string, std::string> m_params;
   };
 
 }

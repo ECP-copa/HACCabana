@@ -56,7 +56,8 @@ void ParticleActions::updatePos(\
 void ParticleActions::updateVel(\
     Cabana::AoSoA<HACCabana::Particles::data_types, device_type> &aosoa_device,\
     Cabana::LinkedCellList<device_type> cell_list,\
-    const float c, const float rmax2, const float rsm2)
+    const float c, const float rmax2, const float rsm2,
+    const float cell_size, const float min_pos)
 {
   auto position = Cabana::slice<HACCabana::Particles::Fields::Position>(aosoa_device, "position");
   auto velocity = Cabana::slice<HACCabana::Particles::Fields::Velocity>(aosoa_device, "velocity");
@@ -87,12 +88,12 @@ void ParticleActions::updateVel(\
     // during a previous subcycle
     float pad_val = 0.5;
     assert( found );
-    assert( position(i,0) >= (float)my_bin_pos[0]*CELL_SIZE+MIN_POS-pad_val );
-    assert( position(i,1) >= (float)my_bin_pos[1]*CELL_SIZE+MIN_POS-pad_val );
-    assert( position(i,2) >= (float)my_bin_pos[2]*CELL_SIZE+MIN_POS-pad_val );
-    assert( position(i,0) <= my_bin_pos[0]*CELL_SIZE+CELL_SIZE+MIN_POS+pad_val );
-    assert( position(i,1) <= my_bin_pos[1]*CELL_SIZE+CELL_SIZE+MIN_POS+pad_val );
-    assert( position(i,2) <= my_bin_pos[2]*CELL_SIZE+CELL_SIZE+MIN_POS+pad_val );
+    assert( position(i,0) >= (float)my_bin_pos[0] * cell_size + min_pos - pad_val );
+    assert( position(i,1) >= (float)my_bin_pos[1] * cell_size + min_pos - pad_val );
+    assert( position(i,2) >= (float)my_bin_pos[2] * cell_size + min_pos - pad_val );
+    assert( position(i,0) <= my_bin_pos[0] * cell_size + cell_size + min_pos + pad_val );
+    assert( position(i,1) <= my_bin_pos[1] * cell_size + cell_size + min_pos + pad_val );
+    assert( position(i,2) <= my_bin_pos[2] * cell_size + cell_size + min_pos + pad_val );
 #endif
     
     float force[3] = {0.0, 0.0, 0.0};
@@ -138,7 +139,8 @@ void ParticleActions::updateVel(\
   Kokkos::fence();
 }
 
-void ParticleActions::subCycle(TimeStepper &ts, const int nsub, const float gpscal, const float rmax2, const float rsm2)
+void ParticleActions::subCycle(TimeStepper &ts, const int nsub, const float gpscal, const float rmax2, const float rsm2, 
+    const float cm_size, const float min_pos, const float max_pos)
 {
   // copy particles to GPU
   Cabana::AoSoA<HACCabana::Particles::data_types, device_type> aosoa_device("aosoa_device", P->num_p);
@@ -146,9 +148,9 @@ void ParticleActions::subCycle(TimeStepper &ts, const int nsub, const float gpsc
 
   // create the cell list on the GPU
   // NOTE: fuzz particles (outside of overload) are not included
-  float dx = CELL_SIZE;
-  float x_min = MIN_POS;
-  float x_max = MAX_POS;
+  float dx = cm_size;
+  float x_min = min_pos;
+  float x_max = max_pos;
 
   float grid_delta[3] = {dx, dx, dx};
   float grid_min[3] = {x_min, x_min, x_min};
@@ -175,6 +177,7 @@ void ParticleActions::subCycle(TimeStepper &ts, const int nsub, const float gpsc
   const float prefactor = 1.0 / (ts.alpha() * ts.adot() * pf);
   float tau = ts.tau()*stepFraction;
 
+  double kick_time = 0.0f;
   // SKS subcycles
   for(int step=0; step < nsub; ++step) 
   {
@@ -182,10 +185,15 @@ void ParticleActions::subCycle(TimeStepper &ts, const int nsub, const float gpsc
     //half stream
     this->updatePos(aosoa_device, prefactor*tau*0.5);
     // kick
-    this->updateVel(aosoa_device, cell_list, c, rmax2, rsm2);
+    double tmp = MPI_Wtime();
+    this->updateVel(aosoa_device, cell_list, c, rmax2, rsm2, cm_size, min_pos);
+    kick_time += MPI_Wtime() - tmp;
+
     //half stream
     this->updatePos(aosoa_device, prefactor*tau*0.5);
   }
+
+  std::cout << "kick time " << kick_time << std::endl;
 
   // copy GPU particles back to host
   Cabana::deep_copy(P->aosoa_host, aosoa_device);
