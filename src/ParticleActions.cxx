@@ -122,7 +122,7 @@ void ParticleActions::updateVel(\
               if (dist2 < rmax2) 
               {
                 const float dist2Err = dist2 + rsm2;
-                const float tmp =  rsqrtf(dist2Err*dist2Err*dist2Err) - FGridEvalPoly(dist2);
+                const float tmp =  1/Kokkos::Experimental::sqrt(dist2Err*dist2Err*dist2Err) - FGridEvalPoly(dist2);
                 force[0] += dx * tmp;
                 force[1] += dy * tmp;
                 force[2] += dz * tmp;
