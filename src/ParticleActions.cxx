@@ -43,7 +43,7 @@ void ParticleActions::updatePos(\
   auto position = Cabana::slice<HACCabana::Particles::Fields::Position>(aosoa_device, "position");
   auto velocity = Cabana::slice<HACCabana::Particles::Fields::Velocity>(aosoa_device, "velocity");
 
-  Kokkos::parallel_for("initialize", Kokkos::RangePolicy<device_exec>(0, P->num_p),
+  Kokkos::parallel_for("stream", Kokkos::RangePolicy<device_exec>(0, P->num_p),
   KOKKOS_LAMBDA(const int i) {
     position(i,0) = position(i,0) + prefactor * velocity(i,0);
     position(i,1) = position(i,1) + prefactor * velocity(i,1);
@@ -62,7 +62,7 @@ void ParticleActions::updateVel(\
   auto position = Cabana::slice<HACCabana::Particles::Fields::Position>(aosoa_device, "position");
   auto velocity = Cabana::slice<HACCabana::Particles::Fields::Velocity>(aosoa_device, "velocity");
 
-  Kokkos::parallel_for("initialize", Kokkos::RangePolicy<device_exec>(P->begin, P->end),
+  Kokkos::parallel_for("kick", Kokkos::RangePolicy<device_exec>(P->begin, P->end),
   KOKKOS_LAMBDA(const int i)
   {
     // the cell that contains this particle
@@ -113,20 +113,17 @@ void ParticleActions::updateVel(\
           size_t binSize = cell_list.binSize(my_bin_pos[0] + ii, my_bin_pos[1] + jj, my_bin_pos[2] + kk);
           for (int j = binOffset; j < binOffset+binSize; ++j) 
           {
-            if (i != j) // ??? 
+            const float dx = position(j,0)-position(i,0);
+            const float dy = position(j,1)-position(i,1);
+            const float dz = position(j,2)-position(i,2);
+            const float dist2 = dx * dx + dy * dy + dz * dz;
+            if (dist2 < rmax2) 
             {
-              const float dx = position(j,0)-position(i,0);
-              const float dy = position(j,1)-position(i,1);
-              const float dz = position(j,2)-position(i,2);
-              const float dist2 = dx * dx + dy * dy + dz * dz;
-              if (dist2 < rmax2) 
-              {
-                const float dist2Err = dist2 + rsm2;
-                const float tmp =  1/Kokkos::Experimental::sqrt(dist2Err*dist2Err*dist2Err) - FGridEvalPoly(dist2);
-                force[0] += dx * tmp;
-                force[1] += dy * tmp;
-                force[2] += dz * tmp;
-              }
+              const float dist2Err = dist2 + rsm2;
+              const float tmp =  1/Kokkos::Experimental::sqrt(dist2Err*dist2Err*dist2Err) - FGridEvalPoly(dist2);
+              force[0] += dx * tmp;
+              force[1] += dy * tmp;
+              force[2] += dz * tmp;
             }
           }
         }
