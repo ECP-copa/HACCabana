@@ -17,8 +17,9 @@ namespace HACCabana
     Particles *P;
 
   public:
-    using device_exec = Kokkos::Cuda;
-    using device_type = Kokkos::Device<Kokkos::Cuda, Kokkos::CudaSpace>;
+    using device_exec = Kokkos::DefaultExecutionSpace::execution_space;
+    using device_mem = Kokkos::DefaultExecutionSpace::memory_space;
+    using device_type = Kokkos::Device<device_exec, device_mem>;
 
     ParticleActions();
     ParticleActions(Particles *P_);
