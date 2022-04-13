@@ -61,56 +61,42 @@ void ParticleActions::updateVel(\
 {
   auto position = Cabana::slice<HACCabana::Particles::Fields::Position>(aosoa_device, "position");
   auto velocity = Cabana::slice<HACCabana::Particles::Fields::Velocity>(aosoa_device, "velocity");
+  auto bin_index = Cabana::slice<HACCabana::Particles::Fields::BinIndex>(aosoa_device, "velocity");
 
-  Kokkos::parallel_for("kick", Kokkos::RangePolicy<device_exec>(P->begin, P->end),
+  Kokkos::parallel_for("copy_bin_index", Kokkos::RangePolicy<device_exec>(0, cell_list.totalBins()),
   KOKKOS_LAMBDA(const int i)
   {
-    // the cell that contains this particle
-    int my_bin_pos[3];
+    int bin_ijk[3];
+    cell_list.ijkBinIndex(i, bin_ijk[0], bin_ijk[1], bin_ijk[2]);
+    for (size_t ii = cell_list.binOffset(bin_ijk[0], bin_ijk[1], bin_ijk[2]); 
+        ii < cell_list.binOffset(bin_ijk[0], bin_ijk[1], bin_ijk[2]) +
+        cell_list.binSize(bin_ijk[0], bin_ijk[1], bin_ijk[2]); 
+        ++ii)
+      bin_index(ii) = i;
+  });
+  Kokkos::fence();
 
-    // AoSoA needs to be permuted for this to work 
-    bool found = false;
-    for (int ii=0; ii<cell_list.totalBins(); ++ii) 
-    {
-      cell_list.ijkBinIndex(ii, my_bin_pos[0], my_bin_pos[1], my_bin_pos[2]);
-      size_t binOffset = cell_list.binOffset(my_bin_pos[0], my_bin_pos[1], my_bin_pos[2]);
-      size_t binSize = cell_list.binSize(my_bin_pos[0], my_bin_pos[1], my_bin_pos[2]);
-      if (i >= binOffset && i < binOffset + binSize) 
-      {
-        found = true;
-        break;
-      }
-    }
+  Kokkos::parallel_for("HACC::kick", Kokkos::RangePolicy<device_exec>(P->begin, P->end),
+  KOKKOS_LAMBDA(const int i)
+  {
+    int bin_ijk[3];
+    cell_list.ijkBinIndex(bin_index(i), bin_ijk[0], bin_ijk[1], bin_ijk[2]);
 
-#ifdef DEBUG_ME
-    // verifying that the particle is indeed within the cell
-    // NOTE: padding the cell boundary since the particle may have moved outside 
-    // during a previous subcycle
-    float pad_val = 0.5;
-    assert( found );
-    assert( position(i,0) >= (float)my_bin_pos[0] * cell_size + min_pos - pad_val );
-    assert( position(i,1) >= (float)my_bin_pos[1] * cell_size + min_pos - pad_val );
-    assert( position(i,2) >= (float)my_bin_pos[2] * cell_size + min_pos - pad_val );
-    assert( position(i,0) <= my_bin_pos[0] * cell_size + cell_size + min_pos + pad_val );
-    assert( position(i,1) <= my_bin_pos[1] * cell_size + cell_size + min_pos + pad_val );
-    assert( position(i,2) <= my_bin_pos[2] * cell_size + cell_size + min_pos + pad_val );
-#endif
-    
     float force[3] = {0.0, 0.0, 0.0};
     for (int ii=-1; ii<2; ++ii) 
     {
-      if (my_bin_pos[0] + ii < 0 || my_bin_pos[0] + ii >= cell_list.numBin(0))
+      if (bin_ijk[0] + ii < 0 || bin_ijk[0] + ii >= cell_list.numBin(0))
         continue;
       for (int jj=-1; jj<2; ++jj) 
       {
-        if (my_bin_pos[1] + jj < 0 || my_bin_pos[1] + jj >= cell_list.numBin(1))
+        if (bin_ijk[1] + jj < 0 || bin_ijk[1] + jj >= cell_list.numBin(1))
           continue;
         for (int kk=-1; kk<2; ++kk) 
         {
-          if (my_bin_pos[2] + kk < 0 || my_bin_pos[2] + kk >= cell_list.numBin(2))
+          if (bin_ijk[2] + kk < 0 || bin_ijk[2] + kk >= cell_list.numBin(2))
             continue;
-          size_t binOffset = cell_list.binOffset(my_bin_pos[0] + ii, my_bin_pos[1] + jj, my_bin_pos[2] + kk);
-          size_t binSize = cell_list.binSize(my_bin_pos[0] + ii, my_bin_pos[1] + jj, my_bin_pos[2] + kk);
+          const size_t binOffset = cell_list.binOffset(bin_ijk[0] + ii, bin_ijk[1] + jj, bin_ijk[2] + kk);
+          const int binSize = cell_list.binSize(bin_ijk[0] + ii, bin_ijk[1] + jj, bin_ijk[2] + kk);
           for (int j = binOffset; j < binOffset+binSize; ++j) 
           {
             const float dx = position(j,0)-position(i,0);
