@@ -31,7 +31,7 @@ namespace HACCabana
         float prefactor);
     void updateVel(Cabana::AoSoA<HACCabana::Particles::data_types, device_type> &aosoa_device,\
         Cabana::LinkedCellList<device_type> cell_list,\
-        const float c, const float rmax2, const float rsm2, const float cell_size, const float min_pos);
+        const float c, const float rmax2, const float rsm2);
   };
 }
 #endif

@@ -56,12 +56,11 @@ void ParticleActions::updatePos(\
 void ParticleActions::updateVel(\
     Cabana::AoSoA<HACCabana::Particles::data_types, device_type> &aosoa_device,\
     Cabana::LinkedCellList<device_type> cell_list,\
-    const float c, const float rmax2, const float rsm2,
-    const float cell_size, const float min_pos)
+    const float c, const float rmax2, const float rsm2)
 {
   auto position = Cabana::slice<HACCabana::Particles::Fields::Position>(aosoa_device, "position");
   auto velocity = Cabana::slice<HACCabana::Particles::Fields::Velocity>(aosoa_device, "velocity");
-  auto bin_index = Cabana::slice<HACCabana::Particles::Fields::BinIndex>(aosoa_device, "velocity");
+  auto bin_index = Cabana::slice<HACCabana::Particles::Fields::BinIndex>(aosoa_device, "bin_index");
 
   Kokkos::parallel_for("copy_bin_index", Kokkos::RangePolicy<device_exec>(0, cell_list.totalBins()),
   KOKKOS_LAMBDA(const int i)
@@ -76,7 +75,7 @@ void ParticleActions::updateVel(\
   });
   Kokkos::fence();
 
-  Kokkos::parallel_for("HACC::kick", Kokkos::RangePolicy<device_exec>(P->begin, P->end),
+  Kokkos::parallel_for("kick", Kokkos::RangePolicy<device_exec>(P->begin, P->end),
   KOKKOS_LAMBDA(const int i)
   {
     int bin_ijk[3];
@@ -169,7 +168,7 @@ void ParticleActions::subCycle(TimeStepper &ts, const int nsub, const float gpsc
     this->updatePos(aosoa_device, prefactor*tau*0.5);
     // kick
     double tmp = MPI_Wtime();
-    this->updateVel(aosoa_device, cell_list, c, rmax2, rsm2, cm_size, min_pos);
+    this->updateVel(aosoa_device, cell_list, c, rmax2, rsm2);
     kick_time += MPI_Wtime() - tmp;
 
     //half stream
