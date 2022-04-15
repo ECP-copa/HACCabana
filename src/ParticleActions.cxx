@@ -75,11 +75,10 @@ void ParticleActions::updateVel(\
   });
   Kokkos::fence();
 
-  Kokkos::parallel_for("kick", Kokkos::RangePolicy<device_exec>(P->begin, P->end),
-  KOKKOS_LAMBDA(const int i)
+  auto vector_kick = KOKKOS_LAMBDA(const int s, const int a)
   {
     int bin_ijk[3];
-    cell_list.ijkBinIndex(bin_index(i), bin_ijk[0], bin_ijk[1], bin_ijk[2]);
+    cell_list.ijkBinIndex(bin_index.access(s,a), bin_ijk[0], bin_ijk[1], bin_ijk[2]);
 
     float force[3] = {0.0, 0.0, 0.0};
     for (int ii=-1; ii<2; ++ii) 
@@ -94,30 +93,37 @@ void ParticleActions::updateVel(\
         {
           if (bin_ijk[2] + kk < 0 || bin_ijk[2] + kk >= cell_list.numBin(2))
             continue;
+
           const size_t binOffset = cell_list.binOffset(bin_ijk[0] + ii, bin_ijk[1] + jj, bin_ijk[2] + kk);
           const int binSize = cell_list.binSize(bin_ijk[0] + ii, bin_ijk[1] + jj, bin_ijk[2] + kk);
+
           for (int j = binOffset; j < binOffset+binSize; ++j) 
           {
-            const float dx = position(j,0)-position(i,0);
-            const float dy = position(j,1)-position(i,1);
-            const float dz = position(j,2)-position(i,2);
+            const float dx = position(j,0)-position.access(s,a,0);
+            const float dy = position(j,1)-position.access(s,a,1);
+            const float dz = position(j,2)-position.access(s,a,2);
             const float dist2 = dx * dx + dy * dy + dz * dz;
             if (dist2 < rmax2) 
             {
               const float dist2Err = dist2 + rsm2;
-              const float tmp =  1/Kokkos::Experimental::sqrt(dist2Err*dist2Err*dist2Err) - FGridEvalPoly(dist2);
+              const float tmp =  1.0f/Kokkos::Experimental::sqrt(dist2Err*dist2Err*dist2Err) - FGridEvalPoly(dist2);
               force[0] += dx * tmp;
               force[1] += dy * tmp;
               force[2] += dz * tmp;
             }
           }
+
         }
       }
     }
-    velocity(i,0) += force[0] * c;
-    velocity(i,1) += force[1] * c;
-    velocity(i,2) += force[2] * c;
-  });
+    velocity.access(s,a,0) += force[0] * c;
+    velocity.access(s,a,1) += force[1] * c;
+    velocity.access(s,a,2) += force[2] * c;
+  };
+
+  Cabana::SimdPolicy<VECTOR_LENGTH, device_exec> simd_policy(P->begin, P->end);
+  Cabana::simd_parallel_for( simd_policy, vector_kick, "kick" ); 
+
   Kokkos::fence();
 }
 
@@ -125,7 +131,7 @@ void ParticleActions::subCycle(TimeStepper &ts, const int nsub, const float gpsc
     const float cm_size, const float min_pos, const float max_pos)
 {
   // copy particles to GPU
-  Cabana::AoSoA<HACCabana::Particles::data_types, device_type> aosoa_device("aosoa_device", P->num_p);
+  Cabana::AoSoA<HACCabana::Particles::data_types, device_type, VECTOR_LENGTH> aosoa_device("aosoa_device", P->num_p);
   Cabana::deep_copy(aosoa_device, P->aosoa_host);
 
   // create the cell list on the GPU

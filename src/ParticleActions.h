@@ -9,6 +9,9 @@
 #include "TimeStepper.h"
 #include "Particles.h"
 
+// This might need to be changed for AMD and Intel GPUs. Nvidia warp size is 32. 
+#define VECTOR_LENGTH 32
+
 namespace HACCabana 
 {
   class ParticleActions
@@ -20,6 +23,7 @@ namespace HACCabana
     using device_exec = Kokkos::DefaultExecutionSpace::execution_space;
     using device_mem = Kokkos::DefaultExecutionSpace::memory_space;
     using device_type = Kokkos::Device<device_exec, device_mem>;
+    //using device_scratch = Kokkos::ScratchMemorySpace<device_exec>;
 
     ParticleActions();
     ParticleActions(Particles *P_);
