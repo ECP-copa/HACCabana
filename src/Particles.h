@@ -30,10 +30,10 @@ namespace HACCabana
 
       Particles();
       ~Particles();
-      void generateData(const int np, const float rl, const float mean_vel);
+      void generateData(const int np, const float rl, const float ol, const float mean_vel);
       void convert_phys2grid(int ng, float rL, float a);
       void readRawData(std::string file_name);
-      void reorder();
+      void reorder(const float min_pos, const float max_pos);
   };
 
 }

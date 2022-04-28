@@ -31,7 +31,7 @@ void Particles::convert_phys2grid(int ng, float rL, float a)
 }
 
 // 
-void Particles::generateData(const int np, const float rl, const float mean_vel)
+void Particles::generateData(const int np, const float rl, const float ol, const float mean_vel)
 {
   num_p = np*np*np;
   aosoa_host = aosoa_host_type("aosoa_host", num_p);
@@ -39,19 +39,30 @@ void Particles::generateData(const int np, const float rl, const float mean_vel)
   auto id = Cabana::slice<ParticleID>(aosoa_host, "id");
   auto position = Cabana::slice<Position>(aosoa_host, "position");
 
-  const float delta = rl/np;
+  const float delta = rl/np;  // inter-particle spacing
 
   // generate data from a grid and offset from a normal random distribution
   std::random_device rd{};
   std::mt19937 gen{rd()};
   std::normal_distribution<float> d1{0.0, 0.05}; // mu=0.0 sigma=0.05
 
+  float min_pos[3];
+  float max_pos[3];
+
   for (int i=0; i<num_p; ++i)
   {
     id(i) = i;
-    position(i,0) = (float)(i % np) * delta + d1(gen);
-    position(i,1) = (float)(i / np % np) * delta + d1(gen);
-    position(i,2) = (float)(i/(np*np)) * delta + d1(gen);
+    position(i,0) = (float)(i % np) * delta + delta*0.5 + d1(gen) + ol;
+    min_pos[0] = i==0 ? position(i,0) : min_pos[0] > position(i,0) ? position(i,0) : min_pos[0]; 
+    max_pos[0] = i==0 ? position(i,0) : max_pos[0] < position(i,0) ? position(i,0) : max_pos[0]; 
+
+    position(i,1) = (float)(i / np % np) * delta + delta*0.5 + d1(gen) + ol;
+    min_pos[1] = i==0 ? position(i,1) : min_pos[1] > position(i,1) ? position(i,1) : min_pos[1]; 
+    max_pos[1] = i==0 ? position(i,1) : max_pos[1] < position(i,1) ? position(i,1) : max_pos[1]; 
+
+    position(i,2) = (float)(i/(np*np)) * delta + delta*0.5 + d1(gen) + ol;
+    min_pos[2] = i==0 ? position(i,2) : min_pos[2] > position(i,2) ? position(i,2) : min_pos[2];
+    max_pos[2] = i==0 ? position(i,2) : max_pos[2] < position(i,2) ? position(i,2) : max_pos[2];
   }
 
   const float vel_1d = mean_vel/sqrt(3.0);
@@ -68,7 +79,10 @@ void Particles::generateData(const int np, const float rl, const float mean_vel)
 
   this->begin = 0;
   this->end = num_p;
-  reorder();
+
+  std::cout << "\t" << num_p << " particles\n" <<
+      "\tmin[" << min_pos[0] << "," << min_pos[1] << "," << min_pos[2] << 
+      "] max["<< max_pos[0] << "," << max_pos[1] << "," << max_pos[2] << "]" << std::endl;
 }
 
 void Particles::readRawData(std::string file_name) 
@@ -80,18 +94,39 @@ void Particles::readRawData(std::string file_name)
 
   aosoa_host = aosoa_host_type("aosoa_host", num_p);
 
+  if (num_p==0)
+    return;
+
   auto id = Cabana::slice<ParticleID>(aosoa_host, "id");
   auto position = Cabana::slice<Position>(aosoa_host, "position");
   auto velocity = Cabana::slice<Velocity>(aosoa_host, "velocity");
 
+  float min_pos[3];
+  float max_pos[3];
+
+// id
   for (int i=0; i<num_p; ++i)
     infile.read((char*)&id(i),sizeof(int64_t));
+// pos
   for (int i=0; i<num_p; ++i)
+  {
     infile.read((char*)&position(i,0),sizeof(float));
+    min_pos[0] = i==0 ? position(i,0) : min_pos[0] > position(i,0) ? position(i,0) : min_pos[0]; 
+    max_pos[0] = i==0 ? position(i,0) : max_pos[0] < position(i,0) ? position(i,0) : max_pos[0]; 
+  } 
   for (int i=0; i<num_p; ++i)
+  {
     infile.read((char*)&position(i,1),sizeof(float));
+    min_pos[1] = i==0 ? position(i,1) : min_pos[1] > position(i,1) ? position(i,1) : min_pos[1]; 
+    max_pos[1] = i==0 ? position(i,1) : max_pos[1] < position(i,1) ? position(i,1) : max_pos[1]; 
+  }
   for (int i=0; i<num_p; ++i)
+  {
     infile.read((char*)&position(i,2),sizeof(float));
+    min_pos[2] = i==0 ? position(i,2) : min_pos[2] > position(i,2) ? position(i,2) : min_pos[2];
+    max_pos[2] = i==0 ? position(i,2) : max_pos[2] < position(i,2) ? position(i,2) : max_pos[2];
+  }
+// vel
   for (int i=0; i<num_p; ++i)
     infile.read((char*)&velocity(i,0),sizeof(float));
   for (int i=0; i<num_p; ++i)
@@ -103,10 +138,13 @@ void Particles::readRawData(std::string file_name)
 
   this->begin = 0;
   this->end = num_p;
-  reorder();
+
+  std::cout << "\t" << num_p << " particles\n" << 
+      "\tmin[" << min_pos[0] << "," << min_pos[1] << "," << min_pos[2] << "] " << 
+      "max["<< max_pos[0] << "," << max_pos[1] << "," << max_pos[2] << "]" << std::endl;
 }
 
-void Particles::reorder()
+void Particles::reorder(const float min_pos, const float max_pos)
 {
   auto id = Cabana::slice<ParticleID>(aosoa_host, "id");
   auto position = Cabana::slice<Position>(aosoa_host, "position");
@@ -115,8 +153,8 @@ void Particles::reorder()
   // Relocate any particle outside of the boundary to the end of the 
   // aosoa -- outside particles start at this->end until the end of the aosoa.
   for (int i=this->begin; i<this->end; ++i) {
-    if (position(i,0) < MIN_POS || position(i,1) < MIN_POS || position(i,2) < MIN_POS ||
-        position(i,0) >= MAX_POS || position(i,1) >= MAX_POS || position(i,2) >= MAX_POS)
+    if (position(i,0) < min_pos || position(i,1) < min_pos || position(i,2) < min_pos ||
+        position(i,0) >= max_pos || position(i,1) >= max_pos || position(i,2) >= max_pos)
     {
       for (int j=0; j<3; ++j)
       {

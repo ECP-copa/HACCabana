@@ -19,6 +19,7 @@ namespace HACCabana
       int ng;
       int np;
       float rL;
+      float oL;
       int nsteps;
       int nsub;
       float rmax;

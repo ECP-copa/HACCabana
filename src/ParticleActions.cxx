@@ -170,8 +170,10 @@ void ParticleActions::subCycle(TimeStepper &ts, const int nsub, const float gpsc
   for(int step=0; step < nsub; ++step) 
   {
     std::cout << "Doing substep " << step << std::endl;
+
     //half stream
     this->updatePos(aosoa_device, prefactor*tau*0.5);
+
     // kick
     double tmp = MPI_Wtime();
     this->updateVel(aosoa_device, cell_list, c, rmax2, rsm2);

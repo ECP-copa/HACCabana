@@ -8,7 +8,8 @@ namespace HACCabana
 Parameters::Parameters() :
   ng(0),
   np(0),
-  rL(0.0),
+  rL(0.0f),
+  oL(0.0f),
   nsteps(0),
   nsub(0),
   rmax(3.116326355),
@@ -94,6 +95,7 @@ void Parameters::load_from_file(std::string file_name)
   ng = atoi(m_params["NG"].c_str());
   np = atoi(m_params["NP"].c_str());
   rL = atof(m_params["RL"].c_str());
+  oL = atof(m_params["OL"].c_str());
   nsteps = atoi(m_params["N_STEPS"].c_str());
   nsub = atoi(m_params["N_SUB"].c_str());
   //rmax(3.116326355),

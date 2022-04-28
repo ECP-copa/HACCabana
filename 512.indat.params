@@ -97,9 +97,9 @@ COMPRESS_OUTPUT YES
 # max RCB tree particles per leaf, ~100 optimal for BG/Q, ~24 for X86
 ################################################################################
 I_SEED 5126873
-NG 256
-NP 256
-RL 256.0
+NG 512
+NP 512
+RL 512.0
 Z_FIN 50.0
 N_STEPS 10
 N_SUB 5

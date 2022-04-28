@@ -133,39 +133,42 @@ int main( int argc, char* argv[] )
   // Setup particle data 
   HACCabana::Particles P;
 
+  const float min_alive_pos = Params.oL;
+  const float max_alive_pos = Params.rL+Params.oL;
+
   if (input_flag)
   {
     cout << "Reading file: " << input_filename << endl;
     P.readRawData(input_filename);
-    cout << "Finished reading file: " << input_filename << endl;
   }
   else if (synthetic_data_flag)
   {
-    cout << "Generating synthetic data in range (" << MIN_POS << "," << MAX_POS << ") delta " << MAX_POS-MIN_POS << "." << endl;
-    // 
-    P.generateData(MAX_POS-MIN_POS, MAX_POS-MIN_POS, MEAN_VEL);
+    cout << "Generating synthetic data in range [" << min_alive_pos << "," << max_alive_pos << "] " 
+         << "rL=" << Params.rL << " oL=" << Params.oL << endl;
+    P.generateData(Params.np, Params.rL, Params.oL, MEAN_VEL);
     P.convert_phys2grid(Params.ng, Params.rL, ts.aa());
   }
 
-  cout << "Number of particles:" << P.num_p << endl;
+  P.reorder(min_alive_pos, max_alive_pos); // TODO:assumes local extent equals the global extent
+  cout << "\t" << P.end-P.begin << " particles in [" << min_alive_pos << "," << max_alive_pos << "]" << endl;
 
   HACCabana::ParticleActions PA(&P);
-  PA.subCycle(ts, Params.nsub, Params.gpscal, Params.rmax*Params.rmax, Params.rsm*Params.rsm, Params.cm_size, MIN_POS, MAX_POS);
+  PA.subCycle(ts, Params.nsub, Params.gpscal, Params.rmax*Params.rmax, Params.rsm*Params.rsm, Params.cm_size, Params.oL, Params.rL+Params.oL);
 
   // verify against the answer from the simulation
   // --------------------------------------------------------------------------------------------------------------------------
 
   if (verification_flag)
   {
-    cout << "Verifying result." << endl;
-    HACCabana::Particles P_ans;
-    P_ans.readRawData(verification_filename);
-    cout << "Finished reading file: " << verification_filename << endl;
-
+    cout << "\nVerifying result." << endl;
     auto particle_id = Cabana::slice<HACCabana::Particles::Fields::ParticleID>( P.aosoa_host, "particle_id" );
     auto sort_data = Cabana::sortByKey( particle_id );
-    Cabana::permute( sort_data, P.aosoa_host );
 
+    HACCabana::Particles P_ans;
+    cout << "Reading file: " << verification_filename << endl;
+    P_ans.readRawData(verification_filename);
+
+    Cabana::permute( sort_data, P.aosoa_host );
     auto particle_id_ans = Cabana::slice<HACCabana::Particles::Fields::ParticleID>( P_ans.aosoa_host, "particle_id_ans" );
     auto sort_data_ans = Cabana::sortByKey( particle_id_ans );
     Cabana::permute( sort_data_ans, P_ans.aosoa_host );
@@ -176,10 +179,10 @@ int main( int argc, char* argv[] )
     cout << "Checking " << P.num_p << " particles against " << P_ans.num_p << " answer particles." << endl;
     assert(P.num_p == P_ans.num_p);
 
-    // don't check near the boundary
-    const float dx_boundary = 4.0;
+    // don't check particles in boundary cells
+    const float dx_boundary = Params.cm_size;
 
-    cout << "\tChceking particles within [" << MIN_POS+dx_boundary << "," << MAX_POS-dx_boundary << ")" << endl;
+    cout << "\tExcluding boundary cells of Linked Cell List.\n\tChceking all particles within [" << Params.oL+dx_boundary << "," << Params.rL+Params.oL-dx_boundary << ")" << endl;
 
     int count = 0;
     int err_n = 0;
@@ -187,12 +190,12 @@ int main( int argc, char* argv[] )
     {
       assert(particle_id(i) == particle_id_ans(i));
       bool is_inside = false;
-      if (position(i,0) >= MIN_POS+dx_boundary &&\
-          position(i,1) >= MIN_POS+dx_boundary &&\
-          position(i,2) >= MIN_POS+dx_boundary &&\
-          position(i,0) <  MAX_POS-dx_boundary &&\
-          position(i,1) <  MAX_POS-dx_boundary &&\
-          position(i,2) <  MAX_POS-dx_boundary)
+      if (position(i,0) >= min_alive_pos+dx_boundary &&\
+          position(i,1) >= min_alive_pos+dx_boundary &&\
+          position(i,2) >= min_alive_pos+dx_boundary &&\
+          position(i,0) <  max_alive_pos-dx_boundary &&\
+          position(i,1) <  max_alive_pos-dx_boundary &&\
+          position(i,2) <  max_alive_pos-dx_boundary)
       {
         is_inside = true;
         ++count;
