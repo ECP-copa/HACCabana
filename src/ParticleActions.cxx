@@ -46,7 +46,7 @@ void ParticleActions::setParticles(Particles *P_)
 
 // Stream
 void ParticleActions::updatePos(\
-    Cabana::AoSoA<HACCabana::Particles::data_types, device_type> aosoa_device,\
+    Cabana::AoSoA<HACCabana::Particles::data_types, device_type, VECTOR_LENGTH> aosoa_device,\
     float prefactor)
 {
   auto position = Cabana::slice<HACCabana::Particles::Fields::Position>(aosoa_device, "position");
@@ -63,7 +63,7 @@ void ParticleActions::updatePos(\
 
 // Kick
 void ParticleActions::updateVel(\
-    Cabana::AoSoA<HACCabana::Particles::data_types, device_type> aosoa_device,\
+    Cabana::AoSoA<HACCabana::Particles::data_types, device_type, VECTOR_LENGTH> aosoa_device,\
     Cabana::LinkedCellList<device_type> cell_list,\
     const float c, const float rmax2, const float rsm2)
 {
