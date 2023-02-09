@@ -1,11 +1,11 @@
 #ifndef PARAMETERS_H
 #define PARAMETERS_H
 
-
 #include <string>
 #include <map>
+
 #include <Cabana_Core.hpp>
-#include <Cabana_AoSoA.hpp>
+
 #include "Definitions.h"
 
 namespace HACCabana
