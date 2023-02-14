@@ -1,3 +1,5 @@
+configure_file(HACCabana_Config.h.cmakein HACCabana_Config.h)
+
 file(GLOB HACCABANA_HEADERS *.h)
 file(GLOB HACCABANA_SOURCES *.cxx)
 
