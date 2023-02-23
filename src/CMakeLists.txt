@@ -23,3 +23,4 @@ set_target_properties(HACCabana PROPERTIES INTERFACE_COMPILE_FEATURES cxx_std_14
 
 add_executable(driver_short-range driver_gpu.cxx)
 target_link_libraries(driver_short-range PUBLIC HACCabana)
+install(TARGETS driver_short-range DESTINATION ${CMAKE_INSTALL_BINDIR})
