@@ -48,8 +48,7 @@ jobs:
         run: |
           cmake -B build \
             -DCMAKE_PREFIX_PATH=${HOME}/kokkos \
-            -DCMAKE_INSTALL_PREFIX=$HOME/arborx \
-            -DCMAKE_CXX_COMPILER=${{ matrix.cxx }}
+            -DCMAKE_INSTALL_PREFIX=$HOME/arborx
           cmake --build build --parallel 2
           cmake --install build
       - name: Checkout Cabana
@@ -61,7 +60,7 @@ jobs:
       - name: Build Cabana
         working-directory: Cabana
         run: |
-          [[ ${{ matrix.arborx == 'ArborX' }} ]] && cmake_opts+=( -DCabana_REQUIRE_ARBORX=ON )
+          [[ ${{ matrix.arborx }} == 'ArborX' ]] && cmake_opts+=( -DCabana_REQUIRE_ARBORX=ON )
           cmake -B build \
           -DCMAKE_INSTALL_PREFIX=$HOME/Cabana \
           -DCMAKE_PREFIX_PATH="$HOME/kokkos;$HOME/arborx" \
