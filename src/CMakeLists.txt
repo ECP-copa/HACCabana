@@ -3,8 +3,6 @@ configure_file(HACCabana_Config.h.cmakein HACCabana_Config.h)
 file(GLOB HACCABANA_HEADERS *.h)
 file(GLOB HACCABANA_SOURCES *.cxx)
 
-install(FILES ${HACCABANA_HEADERS} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-
 add_library(HACCabana ${HACCABANA_SOURCES})
 
 target_include_directories(HACCabana PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
@@ -19,6 +17,7 @@ install(TARGETS HACCabana
 target_link_libraries(HACCabana Cabana::cabanacore)
 
 install(TARGETS HACCabana DESTINATION ${CMAKE_INSTALL_LIBDIR})
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/HACCabana_Config.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 # Require minimum of C++14
 set_target_properties(HACCabana PROPERTIES INTERFACE_COMPILE_FEATURES cxx_std_14)

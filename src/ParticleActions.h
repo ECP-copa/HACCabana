@@ -83,7 +83,7 @@ float FGridEvalPoly(float r2)
 
     KOKKOS_INLINE_FUNCTION void calcVel(float force[3], const float dx,
                                         const float dy, const float dz,
-                                        const float rmax2, const float rsm2) {
+                                        const float rmax2, const float rsm2) const {
         const float dist2 = dx * dx + dy * dy + dz * dz;
         if (dist2 < rmax2) {
             const float dist2Err = dist2 + rsm2;
@@ -165,6 +165,7 @@ class ParticleActions<LinkedCellTag> : public ParticleActionsBase<ParticleAction
     Neighbors<Cabana::AoSoA<HACCabana::Particles::data_types, device_type, VECTOR_LENGTH>, LinkedCellTag> neighbors,\
     const float c, const float rmax2, const float rsm2)
   {
+    std::cout << "Using LinkedCellList" << std::endl;
     auto& cell_list = neighbors.cell_list;
     auto position = Cabana::slice<HACCabana::Particles::Fields::Position>(aosoa_device, "position");
     auto velocity = Cabana::slice<HACCabana::Particles::Fields::Velocity>(aosoa_device, "velocity");
@@ -183,7 +184,7 @@ class ParticleActions<LinkedCellTag> : public ParticleActionsBase<ParticleAction
     });
     Kokkos::fence();
 
-    auto vector_kick = KOKKOS_LAMBDA(const int s, const int a)
+    auto vector_kick = KOKKOS_CLASS_LAMBDA(const int s, const int a)
     {
       int bin_ijk[3];
       cell_list.ijkBinIndex(bin_index.access(s,a), bin_ijk[0], bin_ijk[1], bin_ijk[2]);
@@ -233,10 +234,10 @@ class ParticleActions<LinkedCellTag> : public ParticleActionsBase<ParticleAction
 
 #ifdef HACCabana_ENABLE_ARBORX
 template <>
-class ParticleActions<ArborXTag> : public ParticleActionsBase<ParticleActions<LinkedCellTag>>
+class ParticleActions<ArborXTag> : public ParticleActionsBase<ParticleActions<ArborXTag>>
 {
   public:
-  using base_type = ParticleActionsBase<ParticleActions<LinkedCellTag>>;
+  using base_type = ParticleActionsBase<ParticleActions<ArborXTag>>;
   // Use base class constructors.
   using base_type::base_type;
   using neighbor_tag = ArborXTag;
@@ -246,11 +247,12 @@ class ParticleActions<ArborXTag> : public ParticleActionsBase<ParticleActions<Li
   Neighbors<Cabana::AoSoA<HACCabana::Particles::data_types, device_type, VECTOR_LENGTH>, ArborXTag> neighbors,\
   const float c, const float rmax2, const float rsm2)
   {
+    std::cout << "Using ArborX"	<< std::endl;
     auto& neighbor_list = neighbors.neighbor_list;
     auto position = Cabana::slice<HACCabana::Particles::Fields::Position>(aosoa_device, "position");
     auto velocity = Cabana::slice<HACCabana::Particles::Fields::Velocity>(aosoa_device, "velocity");
 
-    auto kick = KOKKOS_LAMBDA(const int i, const int j)
+    auto kick = KOKKOS_CLASS_LAMBDA(const int i, const int j)
     {
       float force[3] = {0.0, 0.0, 0.0};
       const float dx = position(j,0)-position(i,0);

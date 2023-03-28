@@ -159,6 +159,7 @@ int main( int argc, char* argv[] )
 #else
   using neighbor_tag = HACCabana::LinkedCellTag;
 #endif
+
   HACCabana::ParticleActions<neighbor_tag> PA(&P);
   PA.subCycle(ts, Params.nsub, Params.gpscal, Params.rmax*Params.rmax, Params.rsm*Params.rsm, Params.cm_size, Params.oL, Params.rL+Params.oL);
 
