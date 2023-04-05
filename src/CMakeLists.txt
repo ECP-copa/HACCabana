@@ -19,8 +19,8 @@ target_link_libraries(HACCabana Cabana::cabanacore)
 install(TARGETS HACCabana DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/HACCabana_Config.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
-# Require minimum of C++14
-set_target_properties(HACCabana PROPERTIES INTERFACE_COMPILE_FEATURES cxx_std_14)
+# Require minimum of C++17
+set_target_properties(HACCabana PROPERTIES INTERFACE_COMPILE_FEATURES cxx_std_17)
 
 add_executable(driver_short-range driver_gpu.cxx)
 target_link_libraries(driver_short-range PUBLIC HACCabana)

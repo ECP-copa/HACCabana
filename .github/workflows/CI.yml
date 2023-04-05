@@ -34,7 +34,7 @@ jobs:
         run: |
           cmake -B build \
             -DCMAKE_INSTALL_PREFIX=$HOME/kokkos \
-            -DKokkos_CXX_STANDARD=14 \
+            -DKokkos_CXX_STANDARD=17 \
             -DKokkos_ENABLE_${{ matrix.backend }}=ON
           cmake --build build --parallel 2
           cmake --install build
