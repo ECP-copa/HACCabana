@@ -2,9 +2,9 @@
 #define PARTICLE_ACTIONS_H
 
 #include <string>
+
 #include <Cabana_Core.hpp>
-#include <Cabana_AoSoA.hpp>
-#include <Cabana_LinkedCellList.hpp>
+
 #include "Definitions.h"
 #include "TimeStepper.h"
 #include "Particles.h"

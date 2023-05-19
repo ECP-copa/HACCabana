@@ -2,8 +2,9 @@
 #define PARTICLES_H
 
 #include <string>
+
 #include <Cabana_Core.hpp>
-#include <Cabana_AoSoA.hpp>
+
 #include "Definitions.h"
 
 namespace HACCabana

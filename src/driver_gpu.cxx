@@ -4,9 +4,8 @@
 #include <unistd.h>
 
 #include <iostream>
+
 #include <Cabana_Core.hpp>
-#include <Cabana_AoSoA.hpp>
-#include <Cabana_LinkedCellList.hpp>
 
 #include "Definitions.h"
 #include "Parameters.h"
