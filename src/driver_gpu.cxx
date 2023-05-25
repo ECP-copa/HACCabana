@@ -12,6 +12,8 @@
 #include "TimeStepper.h"
 #include "Particles.h"
 #include "ParticleActions.h"
+#include "Neighbor.h"
+#include "HACCabana_Config.h"
 
 using namespace std;
 
@@ -151,7 +153,13 @@ int main( int argc, char* argv[] )
   P.reorder(min_alive_pos, max_alive_pos); // TODO:assumes local extent equals the global extent
   cout << "\t" << P.end-P.begin << " particles in [" << min_alive_pos << "," << max_alive_pos << "]" << endl;
 
-  HACCabana::ParticleActions PA(&P);
+#ifdef HACCabana_ENABLE_ARBORX
+  using neighbor_tag = HACCabana::ArborXTag;
+#else
+  using neighbor_tag = HACCabana::LinkedCellTag;
+#endif
+
+  HACCabana::ParticleActions<neighbor_tag> PA(&P);
   PA.subCycle(ts, Params.nsub, Params.gpscal, Params.rmax*Params.rmax, Params.rsm*Params.rsm, Params.cm_size, Params.oL, Params.rL+Params.oL);
 
   // verify against the answer from the simulation

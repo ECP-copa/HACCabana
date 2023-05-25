@@ -1,0 +1,6 @@
+#ifndef HACCABANA_CONFIG_HPP
+#define HACCABANA_CONFIG_HPP
+
+#cmakedefine HACCabana_ENABLE_ARBORX
+
+#endif
