@@ -14,7 +14,7 @@ install(TARGETS HACCabana
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
-target_link_libraries(HACCabana Cabana::cabanacore)
+target_link_libraries(HACCabana Cabana::Core)
 
 install(TARGETS HACCabana DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
