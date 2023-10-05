@@ -53,5 +53,9 @@ jobs:
         uses: actions/checkout@v2.2.0
       - name: Build
         run: |
-          cmake -B build -DCMAKE_PREFIX_PATH="$HOME/Cabana"
+          cmake -B build -DCMAKE_INSTALL_PREFIX=$HOME/haccabana -DCMAKE_PREFIX_PATH="$HOME/Cabana"
           cmake --build build --parallel 2
+          cmake --install build
+      - name: Run
+        run: |
+          OMP_PROC_BIND=false $HOME/haccabana/bin/driver_short-range -s -t 0 -c 064.indat.params
