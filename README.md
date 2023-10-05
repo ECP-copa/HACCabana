@@ -18,3 +18,9 @@ Using input and verification files (generated from HACC).
 or use synthetically generated data
 
 ``./build/driver_short-range -s -t 0 -c ./256.indat.params``
+
+## Citing
+If you use HACCabana in your work, please cite the [Zenodo release](https://doi.org/10.5281/zenodo.8411897).
+
+## License
+HACCabana is distributed under an [open source 3-clause BSD license](LICENSE).
