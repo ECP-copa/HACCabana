@@ -46,7 +46,7 @@ void ParticleActions::setParticles(Particles *P_)
 
 // Stream
 void ParticleActions::updatePos(\
-    Cabana::AoSoA<HACCabana::Particles::data_types, device_type, VECTOR_LENGTH> aosoa_device,\
+    Cabana::AoSoA<HACCabana::Particles::data_types, device_mem, VECTOR_LENGTH> aosoa_device,\
     float prefactor)
 {
   auto position = Cabana::slice<HACCabana::Particles::Fields::Position>(aosoa_device, "position");
@@ -63,8 +63,8 @@ void ParticleActions::updatePos(\
 
 // Kick
 void ParticleActions::updateVel(\
-    Cabana::AoSoA<HACCabana::Particles::data_types, device_type, VECTOR_LENGTH> aosoa_device,\
-    Cabana::LinkedCellList<device_type> cell_list,\
+    Cabana::AoSoA<HACCabana::Particles::data_types, device_mem, VECTOR_LENGTH> aosoa_device,\
+    Cabana::LinkedCellList<device_mem> cell_list,\
     const float c, const float rmax2, const float rsm2)
 {
   auto position = Cabana::slice<HACCabana::Particles::Fields::Position>(aosoa_device, "position");
@@ -140,7 +140,7 @@ void ParticleActions::subCycle(TimeStepper &ts, const int nsub, const float gpsc
     const float cm_size, const float min_pos, const float max_pos)
 {
   // copy particles to GPU
-  Cabana::AoSoA<HACCabana::Particles::data_types, device_type, VECTOR_LENGTH> aosoa_device("aosoa_device", P->num_p);
+  Cabana::AoSoA<HACCabana::Particles::data_types, device_mem, VECTOR_LENGTH> aosoa_device("aosoa_device", P->num_p);
   Cabana::deep_copy(aosoa_device, P->aosoa_host);
 
   // create the cell list on the GPU
@@ -154,7 +154,7 @@ void ParticleActions::subCycle(TimeStepper &ts, const int nsub, const float gpsc
   float grid_max[3] = {x_max, x_max, x_max};
 
   auto position = Cabana::slice<HACCabana::Particles::Fields::Position>(aosoa_device, "position");
-  Cabana::LinkedCellList<device_type> cell_list(position, P->begin, P->end, grid_delta, grid_min, grid_max);
+  Cabana::LinkedCellList<device_mem> cell_list(position, P->begin, P->end, grid_delta, grid_min, grid_max);
   Cabana::permute(cell_list, aosoa_device);
   Kokkos::fence();
 
