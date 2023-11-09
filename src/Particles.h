@@ -18,10 +18,9 @@ namespace HACCabana
         ParticleID = 0,
         Position = 1,
         Velocity = 2,
-        BinIndex = 3
       };
 
-      using data_types = Cabana::MemberTypes<int64_t, float[3], float[3], int>;
+      using data_types = Cabana::MemberTypes<int64_t, float[3], float[3]>;
       using aosoa_host_type = Cabana::AoSoA<data_types, Kokkos::Device<Kokkos::DefaultHostExecutionSpace, Kokkos::HostSpace>>;
 
       size_t num_p = 0;

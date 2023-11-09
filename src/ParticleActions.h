@@ -32,7 +32,7 @@ namespace HACCabana
     void updatePos(Cabana::AoSoA<HACCabana::Particles::data_types, device_mem, VECTOR_LENGTH> aosoa_device,\
         float prefactor);
     void updateVel(Cabana::AoSoA<HACCabana::Particles::data_types, device_mem, VECTOR_LENGTH> aosoa_device,\
-        Cabana::LinkedCellList<device_mem> cell_list,\
+        Cabana::LinkedCellList<device_mem, float> cell_list,\
         const float c, const float rmax2, const float rsm2);
   };
 }

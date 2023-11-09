@@ -64,74 +64,36 @@ void ParticleActions::updatePos(\
 // Kick
 void ParticleActions::updateVel(\
     Cabana::AoSoA<HACCabana::Particles::data_types, device_mem, VECTOR_LENGTH> aosoa_device,\
-    Cabana::LinkedCellList<device_mem> cell_list,\
+    Cabana::LinkedCellList<device_mem, float> cell_list,\
     const float c, const float rmax2, const float rsm2)
 {
   auto position = Cabana::slice<HACCabana::Particles::Fields::Position>(aosoa_device, "position");
   auto velocity = Cabana::slice<HACCabana::Particles::Fields::Velocity>(aosoa_device, "velocity");
-  auto bin_index = Cabana::slice<HACCabana::Particles::Fields::BinIndex>(aosoa_device, "bin_index");
 
-  Kokkos::parallel_for("copy_bin_index", Kokkos::RangePolicy<device_exec>(0, cell_list.totalBins()),
-  KOKKOS_LAMBDA(const int i)
+  auto vector_kick = KOKKOS_LAMBDA(const int i, const int j)
   {
-    int bin_ijk[3];
-    cell_list.ijkBinIndex(i, bin_ijk[0], bin_ijk[1], bin_ijk[2]);
-    for (size_t ii = cell_list.binOffset(bin_ijk[0], bin_ijk[1], bin_ijk[2]); 
-        ii < cell_list.binOffset(bin_ijk[0], bin_ijk[1], bin_ijk[2]) +
-        cell_list.binSize(bin_ijk[0], bin_ijk[1], bin_ijk[2]); 
-        ++ii)
-      bin_index(ii) = i;
-  });
-  Kokkos::fence();
-
-  auto vector_kick = KOKKOS_LAMBDA(const int s, const int a)
-  {
-    int bin_ijk[3];
-    cell_list.ijkBinIndex(bin_index.access(s,a), bin_ijk[0], bin_ijk[1], bin_ijk[2]);
-
     float force[3] = {0.0, 0.0, 0.0};
-    for (int ii=-1; ii<2; ++ii) 
+    const float dx = position(j,0)-position(i,0);
+    const float dy = position(j,1)-position(i,1);
+    const float dz = position(j,2)-position(i,2);
+    const float dist2 = dx * dx + dy * dy + dz * dz;
+    if (dist2 < rmax2) 
     {
-      if (bin_ijk[0] + ii < 0 || bin_ijk[0] + ii >= cell_list.numBin(0))
-        continue;
-      for (int jj=-1; jj<2; ++jj) 
-      {
-        if (bin_ijk[1] + jj < 0 || bin_ijk[1] + jj >= cell_list.numBin(1))
-          continue;
-        for (int kk=-1; kk<2; ++kk) 
-        {
-          if (bin_ijk[2] + kk < 0 || bin_ijk[2] + kk >= cell_list.numBin(2))
-            continue;
-
-          const size_t binOffset = cell_list.binOffset(bin_ijk[0] + ii, bin_ijk[1] + jj, bin_ijk[2] + kk);
-          const int binSize = cell_list.binSize(bin_ijk[0] + ii, bin_ijk[1] + jj, bin_ijk[2] + kk);
-
-          for (int j = binOffset; j < binOffset+binSize; ++j) 
-          {
-            const float dx = position(j,0)-position.access(s,a,0);
-            const float dy = position(j,1)-position.access(s,a,1);
-            const float dz = position(j,2)-position.access(s,a,2);
-            const float dist2 = dx * dx + dy * dy + dz * dz;
-            if (dist2 < rmax2) 
-            {
-              const float dist2Err = dist2 + rsm2;
-              const float tmp =  1.0f/Kokkos::sqrt(dist2Err*dist2Err*dist2Err) - FGridEvalPoly(dist2);
-              force[0] += dx * tmp;
-              force[1] += dy * tmp;
-              force[2] += dz * tmp;
-            }
-          }
-
-        }
-      }
+      const float dist2Err = dist2 + rsm2;
+      const float tmp =  1.0f/Kokkos::sqrt(dist2Err*dist2Err*dist2Err) - FGridEvalPoly(dist2);
+      force[0] += dx * tmp;
+      force[1] += dy * tmp;
+      force[2] += dz * tmp;
     }
-    velocity.access(s,a,0) += force[0] * c;
-    velocity.access(s,a,1) += force[1] * c;
-    velocity.access(s,a,2) += force[2] * c;
+
+    velocity(i,0) += force[0] * c;
+    velocity(i,1) += force[1] * c;
+    velocity(i,2) += force[2] * c;
   };
 
-  Cabana::SimdPolicy<VECTOR_LENGTH, device_exec> simd_policy(P->begin, P->end);
-  Cabana::simd_parallel_for( simd_policy, vector_kick, "kick" ); 
+  Kokkos::RangePolicy<device_exec> policy(0, P->num_p);
+  Cabana::linked_cell_parallel_for( policy, vector_kick, cell_list, 
+                                    Cabana::FirstNeighborsTag{}, Cabana::SerialOpTag{}, "kick" ); 
 
   Kokkos::fence();
 }
@@ -154,7 +116,7 @@ void ParticleActions::subCycle(TimeStepper &ts, const int nsub, const float gpsc
   float grid_max[3] = {x_max, x_max, x_max};
 
   auto position = Cabana::slice<HACCabana::Particles::Fields::Position>(aosoa_device, "position");
-  Cabana::LinkedCellList<device_mem> cell_list(position, P->begin, P->end, grid_delta, grid_min, grid_max);
+  Cabana::LinkedCellList<device_mem, float> cell_list(position, P->begin, P->end, grid_delta, grid_min, grid_max);
   Cabana::permute(cell_list, aosoa_device);
   Kokkos::fence();
 
