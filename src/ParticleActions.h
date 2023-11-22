@@ -22,8 +22,6 @@ namespace HACCabana
   public:
     using device_exec = Kokkos::DefaultExecutionSpace::execution_space;
     using device_mem = Kokkos::DefaultExecutionSpace::memory_space;
-    using device_type = Kokkos::Device<device_exec, device_mem>;
-    //using device_scratch = Kokkos::ScratchMemorySpace<device_exec>;
 
     ParticleActions();
     ParticleActions(Particles *P_);
@@ -31,10 +29,10 @@ namespace HACCabana
     void setParticles(Particles *P_);
     void subCycle(TimeStepper &ts, const int nsub, const float gpscal, const float rmax2, const float rsm2,\
         const float cm_size, const float min_pos, const float max_pos);
-    void updatePos(Cabana::AoSoA<HACCabana::Particles::data_types, device_type, VECTOR_LENGTH> aosoa_device,\
+    void updatePos(Cabana::AoSoA<HACCabana::Particles::data_types, device_mem, VECTOR_LENGTH> aosoa_device,\
         float prefactor);
-    void updateVel(Cabana::AoSoA<HACCabana::Particles::data_types, device_type, VECTOR_LENGTH> aosoa_device,\
-        Cabana::LinkedCellList<device_type> cell_list,\
+    void updateVel(Cabana::AoSoA<HACCabana::Particles::data_types, device_mem, VECTOR_LENGTH> aosoa_device,\
+        Cabana::LinkedCellList<device_mem, float> cell_list,\
         const float c, const float rmax2, const float rsm2);
   };
 }
