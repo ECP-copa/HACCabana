@@ -27,11 +27,29 @@ float FGridEvalPoly(float r2)
 namespace HACCabana
 {
 
-ParticleActions::ParticleActions() {};
-
-ParticleActions::ParticleActions(Particles *P_) : P(P_)
+ParticleActions::ParticleActions()
 {
-  ;
+    aosoa_device = aosoa_device_type("aosoa_device", 0);
+};
+
+ParticleActions::ParticleActions(Particles *P_, const float cm_size, const float min_pos, const float max_pos ) : P(P_)
+{
+    aosoa_device = aosoa_device_type("aosoa_device", P->num_p);
+    Cabana::deep_copy(aosoa_device, P->aosoa_host);
+    auto position = Cabana::slice<HACCabana::Particles::Fields::Position>(aosoa_device, "position");
+
+    // create the cell list on the GPU
+    // NOTE: fuzz particles (outside of overload) are not included
+    float dx = cm_size;
+    float x_min = min_pos;
+    float x_max = max_pos;
+
+    float grid_delta[3] = {dx, dx, dx};
+    float grid_min[3] = {x_min, x_min, x_min};
+    float grid_max[3] = {x_max, x_max, x_max};
+    std::cout << grid_delta[0] << " " << grid_min[0] << " " << grid_max[0] << std::endl;
+
+    cell_list = neighbor_type(position, grid_delta, grid_min, grid_max);
 };
 
 ParticleActions::~ParticleActions()
@@ -136,25 +154,14 @@ void ParticleActions::updateVel(\
   Kokkos::fence();
 }
 
-void ParticleActions::subCycle(TimeStepper &ts, const int nsub, const float gpscal, const float rmax2, const float rsm2, 
-    const float cm_size, const float min_pos, const float max_pos)
+void ParticleActions::subCycle(TimeStepper &ts, const int nsub, const float gpscal, const float rmax2, const float rsm2)
 {
   // copy particles to GPU
-  Cabana::AoSoA<HACCabana::Particles::data_types, device_type, VECTOR_LENGTH> aosoa_device("aosoa_device", P->num_p);
+  aosoa_device.resize(P->num_p);
   Cabana::deep_copy(aosoa_device, P->aosoa_host);
 
-  // create the cell list on the GPU
-  // NOTE: fuzz particles (outside of overload) are not included
-  float dx = cm_size;
-  float x_min = min_pos;
-  float x_max = max_pos;
-
-  float grid_delta[3] = {dx, dx, dx};
-  float grid_min[3] = {x_min, x_min, x_min};
-  float grid_max[3] = {x_max, x_max, x_max};
-
   auto position = Cabana::slice<HACCabana::Particles::Fields::Position>(aosoa_device, "position");
-  Cabana::LinkedCellList<device_type> cell_list(position, P->begin, P->end, grid_delta, grid_min, grid_max);
+  cell_list.build(position);
   Cabana::permute(cell_list, aosoa_device);
   Kokkos::fence();
 

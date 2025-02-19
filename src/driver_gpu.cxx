@@ -151,8 +151,8 @@ int main( int argc, char* argv[] )
   P.reorder(min_alive_pos, max_alive_pos); // TODO:assumes local extent equals the global extent
   cout << "\t" << P.end-P.begin << " particles in [" << min_alive_pos << "," << max_alive_pos << "]" << endl;
 
-  HACCabana::ParticleActions PA(&P);
-  PA.subCycle(ts, Params.nsub, Params.gpscal, Params.rmax*Params.rmax, Params.rsm*Params.rsm, Params.cm_size, Params.oL, Params.rL+Params.oL);
+  HACCabana::ParticleActions PA(&P, Params.cm_size, Params.oL, Params.rL+Params.oL);
+  PA.subCycle(ts, Params.nsub, Params.gpscal, Params.rmax*Params.rmax, Params.rsm*Params.rsm);
 
   // verify against the answer from the simulation
   // --------------------------------------------------------------------------------------------------------------------------
